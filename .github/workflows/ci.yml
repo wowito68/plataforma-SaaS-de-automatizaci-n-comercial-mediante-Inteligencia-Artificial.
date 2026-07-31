@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iteration1
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iteration1"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      UV_CACHE_DIR: /tmp/uv-cache
+      TEST_DATABASE_SUPERUSER_URL: postgresql+psycopg://postgres:test-postgres@127.0.0.1:5432/iteration1
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.12"
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install from lock
+        run: uv sync --locked
+      - name: Format
+        run: uv run --frozen ruff format --check .
+      - name: Lint
+        run: uv run --frozen ruff check .
+      - name: Type check
+        run: uv run --frozen mypy src tests
+      - name: Unit and integration tests
+        run: uv run --frozen pytest -q --cov=saas_platform --cov-report=term-missing --cov-report=xml
+      - name: Verify migrated revision
+        env:
+          DATABASE_MIGRATION_URL: postgresql+psycopg://app_owner:test-owner@127.0.0.1:5432/iteration1
+        run: uv run --frozen alembic current
+      - name: Build distributions
+        run: uv build
+      - name: Secret baseline
+        run: git ls-files -z | xargs -0 uv run --frozen detect-secrets-hook --baseline .secrets.baseline
+      - name: Audit runtime dependencies
+        run: |
+          uv export --locked --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt
+          uv run --frozen pip-audit --cache-dir /tmp/pip-audit-cache -r /tmp/requirements.txt

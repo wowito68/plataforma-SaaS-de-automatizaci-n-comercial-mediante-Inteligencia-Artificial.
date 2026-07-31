@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "saas-sales-automation"
+version = "0.1.0"
+description = "Multi-tenant SaaS sales automation platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic>=1.15,<2",
+  "fastapi>=0.115,<1",
+  "prometheus-client>=0.21,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.8,<3",
+  "sqlalchemy>=2.0,<3",
+  "uuid6>=2024.7.10,<2027",
+  "uvicorn>=0.34,<1",
+]
+
+[project.scripts]
+saas-api = "saas_platform.entrypoints.api:main"
+saas-worker = "saas_platform.entrypoints.worker:main"
+saas-bootstrap-demo = "saas_platform.entrypoints.bootstrap_demo:main"
+
+[dependency-groups]
+dev = [
+  "detect-secrets>=1.5,<2",
+  "httpx>=0.28,<1",
+  "mypy>=1.15,<2",
+  "pip-audit>=2.8,<3",
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<8",
+  "ruff>=0.11,<1",
+  "testcontainers[postgres]>=4.9,<5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/saas_platform"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+markers = [
+  "integration: requires a real PostgreSQL container",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["saas_platform"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["saas_platform"]
+show_error_codes = true
+warn_unreachable = true
+
+[tool.uv]
+package = true
