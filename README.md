@@ -4,12 +4,15 @@ Base tecnica de un monolito modular multiempresa. La Iteracion 1 demuestra que
 un evento sintetico puede recorrer API, PostgreSQL, outbox, cola durable e inbox
 hasta un worker sin perder aislamiento, trazabilidad ni idempotencia. La Entrega
 1 de calificacion telecom agrega un motor de scoring puro, determinista,
-versionado y explicable por tenant y tipo de oportunidad.
+versionado y explicable por tenant y tipo de oportunidad. La Entrega 2 agrega
+extraccion IA estructurada, validacion local, confianza, contradicciones,
+siguiente pregunta y mapeo controlado hacia ese dominio.
 
-No contiene WhatsApp, extraccion con IA, RAG, contactos, conversaciones, leads
+No contiene WhatsApp, RAG, contactos, conversaciones, leads o extracciones
 persistidos, CRM, billing ni autenticacion de usuarios. Tampoco expone API o
-panel de calificacion. El adaptador sintetico existe solo para desarrollo y
-pruebas y la configuracion impide habilitarlo en produccion.
+panel de calificacion/extraccion. OpenAI es opt-in y el flujo se prueba offline
+con un adaptador scripted; el adaptador sintetico existente sigue limitado a
+desarrollo/pruebas.
 
 ## Arquitectura resumida
 
@@ -23,11 +26,16 @@ pruebas y la configuracion impide habilitarlo en produccion.
 - Perfil comercial inmutable, senales con confianza y contradicciones trazables.
 - Politicas telecom 0..100 con topes, exclusiones, penalizaciones y handoff.
 - Elegibilidad financiera separada y referencia historica de politica/fingerprint.
+- Puerto de extraccion pequeno, esquema estricto y prompts versionados.
+- Contexto acotado/redactado, confianza local, conflictos y DNC prioritario.
+- OpenAI Responses API detras del puerto; scripted adapter para pruebas offline.
 
 La seleccion del stack y la cola son provisionales y estan registradas en
 [ADR-016](docs/adr/ADR-016-provisional-python-stack.md) y
 [ADR-017](docs/adr/ADR-017-provisional-postgres-queue.md). El scoring determinista
-se registra en [ADR-018](docs/adr/ADR-018-deterministic-telecom-scoring.md).
+se registra en [ADR-018](docs/adr/ADR-018-deterministic-telecom-scoring.md) y el
+limite de extraccion IA en
+[ADR-019](docs/adr/ADR-019-structured-ai-extraction-boundary.md).
 
 ## Requisitos
 
@@ -89,6 +97,11 @@ bootstrap local. Ninguna credencial de ejemplo es apta para otro entorno.
 La API falla al iniciar si la configuracion es incompleta o si se intenta
 habilitar `SYNTHETIC_ADAPTER_ENABLED` en produccion.
 
+`AI_EXTRACTION_ENABLED=false` por defecto y no requiere API key para pruebas,
+build, API o worker actuales. Al componer explicitamente la capacidad OpenAI se
+requiere `OPENAI_API_KEY`; timeout, modelo, reintentos, tokens, contexto,
+confianza y costes opcionales se configuran en `.env`.
+
 ## Health y metricas
 
 - `GET /health/live`: valida que el proceso ASGI responde; no consulta externos.
@@ -110,8 +123,8 @@ make audit
 `make test` levanta un PostgreSQL 16 efimero con Testcontainers, crea roles de
 minimo privilegio, migra desde cero y ejecuta pruebas unitarias e integracion.
 Tambien puede usarse `TEST_DATABASE_SUPERUSER_URL` para apuntar a una base vacia
-de CI. La cobertura minima obligatoria es 85%. Los casos telecom A-E se ejecutan
-como pruebas unitarias sin red, base de datos o proveedor de IA.
+de CI. La cobertura minima obligatoria es 85%. Los casos telecom A-E, salidas
+hostiles y errores del SDK se ejecutan sin red, base de datos o credenciales IA.
 
 ## Estructura
 
@@ -131,7 +144,9 @@ docs/                   arquitectura, ADRs, runbook y deuda
 
 Consulta [arquitectura](docs/architecture/README.md),
 [calificacion telecom](docs/architecture/telecommunications-lead-qualification.md),
+[extraccion IA telecom](docs/architecture/telecommunications-ai-structured-extraction.md),
 [informe de Entrega 1](docs/reports/telecommunications-lead-qualification-delivery-1-report.md),
+[informe de Entrega 2](docs/reports/telecommunications-lead-qualification-delivery-2-report.md),
 [persistencia](docs/persistence.md), [runbook](docs/runbook.md),
 [dependencias](docs/dependencies.md) y [deuda tecnica](docs/technical-debt.md).
 
@@ -139,6 +154,7 @@ Consulta [arquitectura](docs/architecture/README.md),
 
 La cola PostgreSQL y el rol worker con `BYPASSRLS` son decisiones temporales.
 Antes de produccion deben confirmarse cloud, cola administrada y stack con el
-equipo. La calificacion actual no persiste perfiles, politicas o resultados y no
-procesa texto libre. Su siguiente vertical recomendado es extraccion IA con
-esquemas y prompts versionados; la IA entregara senales, nunca el score final.
+equipo. La calificacion/extraccion actual no persiste perfiles, politicas,
+ejecuciones o resultados y no recibe conversaciones productivas. La siguiente
+vertical es integracion conversacional, persistencia incremental y aplicacion
+idempotente al `LeadProfile`; la IA seguira entregando evidencia, nunca el score.

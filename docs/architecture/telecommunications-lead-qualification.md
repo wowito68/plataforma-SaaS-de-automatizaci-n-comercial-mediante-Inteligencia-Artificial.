@@ -2,17 +2,19 @@
 
 ## Estado y proposito
 
-Estado: **Entrega 1 implementada; capacidad integral parcial**.
+Estado: **Entregas 1 y 2 implementadas; capacidad integral parcial**.
 
 Este bounded context califica oportunidades comerciales de telecomunicaciones de
-forma determinista, explicable, reproducible y aislada por empresa. El motor no
-interpreta texto libre ni permite que una IA asigne el puntaje final: recibe un
-perfil y senales normalizadas, resuelve una politica publicada y calcula el
-resultado mediante reglas auditables.
+forma determinista, explicable, reproducible y aislada por empresa. La capacidad
+adyacente `telecom_extraction` interpreta fragmentos de texto mediante una salida
+estructurada no confiable, la valida y propone un perfil/senales normalizados. El
+motor no permite que una IA asigne el puntaje final: resuelve una politica
+publicada y calcula el resultado mediante reglas auditables.
 
-Esta entrega no recibe conversaciones, no llama modelos de IA, no persiste leads
-ni politicas, no ejecuta handoffs y no expone API o panel. Esos limites son
-deliberados y evitan inventar propietarios de datos que el repositorio aun no
+La Entrega 2 puede procesar mensajes suministrados en memoria y ofrece un
+adaptador OpenAI opt-in, pero no recibe WhatsApp, no persiste conversaciones,
+leads, extracciones o politicas, no ejecuta handoffs y no expone API o panel.
+Esos limites evitan inventar propietarios de datos que el repositorio aun no
 tiene.
 
 ## Alcance de dominio
@@ -28,6 +30,9 @@ tiene.
 | `QualificationResult` | Registro historico conceptual | Resultado completo con explicacion y referencia de politica |
 | `EvaluateLeadQualification` | Caso de uso | Resuelve politica tenant/oportunidad y suministra ID/fecha |
 | `ScoringPolicyProvider` | Puerto | Obtiene la version publicada sin acoplar almacenamiento |
+| `CommercialExtractionProvider` | Puerto | Solicita una extraccion comercial estructurada sin tipos del SDK |
+| `TelecomExtractionResult` | Resultado por etapas | Procedencia, confianza, controles, conflictos, pregunta y auditoria |
+| `ExtractionDomainMapper` | Servicio de aplicacion | Propone perfil inmutable y construye `QualificationRequest` |
 
 No se introdujo un agregado `Lead`: su propiedad, concurrencia y limite
 transaccional deben definirse junto con contacto y conversacion en la Entrega 3.
@@ -58,10 +63,13 @@ respuesta negativa.
 
 ## Perfil comercial
 
-`LeadProfile` conserva los campos de producto, marca, modelo, capacidad, color,
-presupuestos, pago, plazo, plan, consumo, llamadas, roaming, portabilidad,
-operador, fecha de compra, lineas, tipo/tamano de cliente, ubicacion, cobertura,
-inventario, accion, canal, sucursal e intencion.
+`LeadProfile` conserva campos de producto, marca, modelo, capacidad, color,
+condicion, cantidad, precios/presupuestos, financiamiento declarado, pago, plazo,
+plan, consumo, llamadas/mensajes/redes, roaming/internacionales, modalidad,
+portabilidad, operador, fechas, lineas/equipos, tipo/tamano/rol de cliente,
+facturacion/administracion, ubicacion, cobertura, inventario, accion, canal,
+sucursal e intencion. Cobertura, inventario y elegibilidad solo pueden hacerse
+autoritativos mediante fuentes externas autorizadas.
 
 Cada `ProfileFact` registra:
 
@@ -265,26 +273,33 @@ canonico. Ninguna transicion debe aceptarse por asignacion arbitraria.
 | Pasos solicitados | Estado en esta entrega |
 |---|---|
 | 1-4 recibir/persistir/resolver tenant-contacto-conversacion | Existente solo para evento sintetico; no integrado a leads |
-| 5 identificar oportunidad | Tipo modelado; clasificador no implementado |
-| 6-8 IA, esquema y normalizacion | No implementado; entrada actual ya normalizada |
-| 9-12 comparar, conflictos, perfil y faltantes | Estructuras modeladas; actualizacion incremental no implementada |
-| 13 siguiente pregunta | No implementado |
+| 5 identificar oportunidad | Extraccion estructurada reconoce los 11 tipos y evidencia |
+| 6-8 IA, esquema y normalizacion | Puerto, OpenAI/scripted, esquema estricto y normalizacion implementados |
+| 9-12 comparar, conflictos, perfil y faltantes | Propuesta inmutable en memoria; aplicacion durable pendiente |
+| 13 siguiente pregunta | Selector local implementado; envio conversacional pendiente |
 | 14-20 scoring, penalizaciones, bloqueos, clasificacion, accion, handoff | Implementado |
 | 21 explicacion | Implementado |
 | 22 versionar resultado | Referencia/fingerprint implementados; persistencia no |
-| 23-25 eventos, metricas y continuacion/transferencia | No implementado |
+| 23-25 eventos, metricas y continuacion/transferencia | Metricas tecnicas IA implementadas; eventos/ejecucion pendientes |
 
 El `trigger_id` y `correlation_id` quedan en cada resultado para conectarlo luego
-con inbox/outbox. La idempotencia real debe vivir en la transaccion que actualice
-el Lead; no se afirma que exista mientras ese agregado no este implementado.
+con inbox/outbox. Entrega 2 crea una clave SHA-256 estable por tenant,
+conversacion, mensajes, prompt, esquema y operacion. La idempotencia real debe
+vivir en la transaccion que actualice el Lead; no se afirma que la deduplicacion
+durable exista mientras ese agregado no este implementado.
 
 ## Siguiente mejor pregunta
 
-No esta implementada en Entrega 1. El selector futuro recibira oportunidad,
-hechos confiables, faltantes, impacto potencial, etapa, friccion y politica. No
-preguntara un hecho ya confirmado, limitara preguntas consecutivas y cedera ante
-una solicitud humana. Las preguntas no deben codificarse dentro del motor de
-score porque conversacion y calificacion tienen ciclos de cambio distintos.
+Entrega 2 calcula faltantes distintos por oportunidad y selecciona una sola
+pregunta. La propuesta del proveedor se acepta solo si apunta al primer dato
+faltante/conflictivo, no fue preguntado recientemente, es breve y no solicita
+telefono, correo, credenciales, tarjeta o identificadores oficiales. Si falla,
+se usa una plantilla local segura. DNC, solicitud humana y handoff confirmado
+suprimen la pregunta. El envio, historial durable de preguntas y control de
+friccion entre sesiones pertenecen a Entrega 3.
+
+El pipeline completo, esquema, prompts, confianza, errores y ejemplos estan en
+[Telecommunications AI Structured Extraction](telecommunications-ai-structured-extraction.md).
 
 ## Explicabilidad y auditoria
 
@@ -366,7 +381,10 @@ motor nunca importara SDKs de operador o proveedor.
 
 ## Metricas y calibracion
 
-No hay metricas comerciales en esta entrega porque no existe almacenamiento ni
+Entrega 2 agrega metricas tecnicas de extracciones iniciadas/completadas/fallidas,
+errores, reparacion, duracion, confianza, campos, contradicciones, DNC, handoff,
+tokens y coste opcional por proveedor/modelo/version. IDs, telefono y contenido
+no son etiquetas. No hay metricas comerciales porque no existe almacenamiento ni
 outcome real. La futura proyeccion medira distribucion/promedio por clasificacion
 y oportunidad, cambios, faltantes, tiempo/preguntas, handoff, cotizacion,
 portabilidad, contratacion, venta, conversion por rango/dimension/producto/plan/
@@ -387,6 +405,12 @@ consentimiento explicito.
   equivoca.
 - Conversaciones, telefonos, documentos, presupuestos y decisiones financieras
   no deben aparecer completos en logs.
+- El contexto se limita por mensajes, caracteres, resumen y antiguedad; telefono,
+  correo y RFC/CURP-like se redactan antes del proveedor.
+- Mensajes y resumen son datos no confiables. Prompt injection se detecta y no
+  puede agregar score, elegibilidad, politica, permisos o datos cross-tenant.
+- El esquema prohibe propiedades desconocidas; cobertura/inventario declarados
+  por el modelo se bloquean antes del perfil.
 - La futura administracion necesita OIDC/RBAC, auditoria de lectura/publicacion y
   RLS; el bearer sintetico actual no es autenticacion de producto.
 - Senales rechazadas o debajo de `0.70` no puntuan; una confirmacion humana puede
@@ -394,13 +418,13 @@ consentimiento explicito.
 
 ## Ejemplos de referencia
 
-| Caso | Resultado determinista de prueba |
-|---|---|
-| A. Portabilidad con equipo, presupuesto y esta semana | 82, caliente, elegibilidad pendiente, handoff inmediato |
-| B. "Que celulares manejan" | 3, exploracion, cuatro faltantes, sin handoff |
-| C. Modelo hoy sin inventario | 30, frio, -10 y buscar alternativas; al aceptarla, handoff |
-| D. Empresa, 40 lineas, proximo mes | 35, frio por datos aun limitados, handoff especializado |
-| E. "No me escriban" | 0, detener automatizacion, estado no contactar, sin handoff |
+| Caso | Extraccion Entrega 2 | Resultado determinista de referencia |
+|---|---|---|
+| A. Portabilidad con equipo, presupuesto y esta semana | Portabilidad + equipo/plan, 600 MXN, Samsung, financiamiento declarado, esta semana, handoff | 82, caliente, elegibilidad pendiente |
+| B. "Que celulares manejan" | Exploracion, faltantes relevantes y una pregunta | 3, exploracion, sin handoff |
+| C. Galaxy S25 Ultra hoy | Modelo e inmediato; inventario desconocido | Un lookup autorizado posterior puede aportar stock; la IA no aplica -10 |
+| D. Empresa, 40 lineas, proximo mes | Empresa, volumen, equipos, plazo y handoff especializado | 35, frio por datos aun limitados |
+| E. "No me escriban" | DNC incluso con proveedor invalido; sin pregunta/handoff | 0, detener y estado no contactar |
 
 Los casos muestran por que score, estado, bloqueo, elegibilidad y accion son ejes
 separados. Un caso empresarial puede requerir especialista con score modesto y
@@ -408,8 +432,8 @@ un equipo agotado bloquea una oferta, no al prospecto.
 
 ## Proxima entrega
 
-Recomendacion: **Entrega 2, extraccion estructurada mediante IA**, sin integrarla
-aun a WhatsApp ni crear CRUDs. Debe definir esquemas validados para oportunidad,
-hechos, senales y contradicciones; prompts versionados; umbrales/fallbacks;
-adaptador sustituible; pruebas de salida invalida, timeout y proveedor caido. Su
-salida seguira siendo evidencia no confiable para este motor determinista.
+Recomendacion: **Entrega 3: Integracion conversacional, persistencia incremental
+y aplicacion idempotente de extracciones al LeadProfile**. Debe definir propiedad
+de Contact/Conversation/Lead, versionado incremental, ejecucion/deduplicacion
+durable, transaccion de aplicacion, RLS, retencion, pausa por DNC/handoff y eventos.
+No esta implementada en Entrega 2.

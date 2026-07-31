@@ -10,6 +10,8 @@
 | uuid6 | UUIDv7 | UUIDv4 o implementacion propia | Cumple la estrategia aprobada sin criptografia propia | Dependencia pequena adicional |
 | prometheus-client | Metricas | Contadores propios | Formato interoperable y estable | Cardinalidad si se etiqueta tenant |
 | Uvicorn | Servidor ASGI | Hypercorn | Integracion directa y madura | Debe configurarse por entorno |
+| OpenAI SDK | Adaptador de salida estructurada Responses API | HTTP directo, otro SDK | Cliente oficial con `responses.parse`; aislado detras del puerto | Cambio de API/modelo y dependencia de proveedor |
+| Pydantic | Esquema estricto de salida y tipos acotados | Validacion manual, jsonschema | Ya es base del stack y genera JSON Schema compatible | Semantica de schema al cambiar version mayor |
 | Ruff | Formato y lint | Black + Flake8 | Una herramienta rapida y mantenida | Reglas nuevas al actualizar |
 | Mypy | Type checking | Pyright | Compatible con stack Python y CI | Tipos de librerias incompletos |
 | Pytest | Pruebas | unittest | Fixtures legibles y amplio soporte | Fixtures excesivas |
@@ -17,5 +19,6 @@
 | detect-secrets | Deteccion basica | Gitleaks | Ejecutable con el mismo entorno Python | Falsos positivos/baseline |
 | pip-audit | Vulnerabilidades | Scanner externo | Audita el lock de Python | Depende de base de vulnerabilidades |
 
-No se agregan SDKs de IA, mensajeria, cache, brokers ni frameworks de agentes en
-esta iteracion.
+No se agregan frameworks de agentes, RAG, mensajeria, cache, brokers, motores de
+workflow ni SDKs de IA adicionales. El SDK oficial solo aparece en el adaptador;
+dominio, aplicacion y pruebas de flujo dependen del puerto.

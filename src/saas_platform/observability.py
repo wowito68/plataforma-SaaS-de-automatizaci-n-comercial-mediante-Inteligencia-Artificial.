@@ -110,6 +110,15 @@ class JsonFormatter(logging.Formatter):
             "operation",
             "error_type",
             "result",
+            "execution_id",
+            "provider",
+            "model",
+            "prompt_version",
+            "schema_version",
+            "duration_ms",
+            "outcome",
+            "input_tokens",
+            "output_tokens",
         ):
             if hasattr(record, field):
                 payload[field] = redact(getattr(record, field), field)

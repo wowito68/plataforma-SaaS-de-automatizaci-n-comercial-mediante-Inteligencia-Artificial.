@@ -11,6 +11,7 @@ esta ausencia documental.
 | [ADR-016](ADR-016-provisional-python-stack.md) | Provisional aceptado | Python 3.12, uv, FastAPI, SQLAlchemy Core, Alembic y Psycopg para Iteracion 1 |
 | [ADR-017](ADR-017-provisional-postgres-queue.md) | Provisional aceptado | Cola PostgreSQL durable local hasta seleccionar plataforma administrada |
 | [ADR-018](ADR-018-deterministic-telecom-scoring.md) | Aceptado para Entrega 1 | El score telecom se calcula con politicas deterministicas versionadas; la IA solo aporta senales |
+| [ADR-019](ADR-019-structured-ai-extraction-boundary.md) | Aceptado para Entrega 2 | Salida estructurada no confiable tras un puerto pequeno y validacion local; una llamada MVP y persistencia diferida |
 
 Decisiones vigentes recibidas y aplicadas, sin asignarles un numero inexistente:
 monolito modular, PostgreSQL compartido, tenant obligatorio con defensa en

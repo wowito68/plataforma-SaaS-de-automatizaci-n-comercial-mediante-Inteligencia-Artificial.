@@ -1,3 +1,4 @@
+from decimal import Decimal
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -30,6 +31,24 @@ class Settings(BaseSettings):
     synthetic_adapter_enabled: bool = False
     synthetic_adapter_token: SecretStr | None = None
 
+    ai_extraction_enabled: bool = False
+    ai_extraction_provider: Literal["openai"] = "openai"
+    openai_api_key: SecretStr | None = None
+    ai_extraction_model: str = Field(default="gpt-5.6-terra", min_length=1, max_length=100)
+    ai_extraction_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+    ai_extraction_max_retries: int = Field(default=1, ge=0, le=3)
+    ai_extraction_max_output_tokens: int = Field(default=4_000, ge=256, le=16_000)
+    ai_extraction_context_max_messages: int = Field(default=12, ge=1, le=50)
+    ai_extraction_context_max_characters: int = Field(default=12_000, ge=500, le=50_000)
+    ai_extraction_summary_max_characters: int = Field(default=2_000, ge=100, le=10_000)
+    ai_extraction_context_max_age_days: int = Field(default=30, ge=1, le=365)
+    ai_extraction_auto_accept_confidence: Decimal = Field(default=Decimal("0.85"), ge=0, le=1)
+    ai_extraction_provisional_confidence: Decimal = Field(default=Decimal("0.65"), ge=0, le=1)
+    ai_extraction_confirmation_confidence: Decimal = Field(default=Decimal("0.40"), ge=0, le=1)
+    ai_extraction_input_cost_per_million_usd: Decimal | None = Field(default=None, ge=0)
+    ai_extraction_output_cost_per_million_usd: Decimal | None = Field(default=None, ge=0)
+    ai_extraction_log_content: bool = False
+
     queue_poll_interval_ms: int = Field(default=250, ge=50, le=60_000)
     queue_lease_seconds: int = Field(default=30, ge=5, le=600)
     queue_max_attempts: int = Field(default=3, ge=1, le=10)
@@ -49,6 +68,20 @@ class Settings(BaseSettings):
                 raise ValueError("SYNTHETIC_ADAPTER_TOKEN is required when the adapter is enabled")
             if len(self.synthetic_adapter_token.get_secret_value()) < 24:
                 raise ValueError("SYNTHETIC_ADAPTER_TOKEN must contain at least 24 characters")
+
+        if self.ai_extraction_enabled and self.openai_api_key is None:
+            raise ValueError("OPENAI_API_KEY is required when AI extraction is enabled")
+        if self.app_env == "production" and self.ai_extraction_log_content:
+            raise ValueError("AI extraction content logging cannot be enabled in production")
+        if not (
+            self.ai_extraction_confirmation_confidence
+            <= self.ai_extraction_provisional_confidence
+            <= self.ai_extraction_auto_accept_confidence
+        ):
+            raise ValueError(
+                "AI extraction confidence thresholds must satisfy confirmation <= provisional "
+                "<= auto-accept"
+            )
         return self
 
 

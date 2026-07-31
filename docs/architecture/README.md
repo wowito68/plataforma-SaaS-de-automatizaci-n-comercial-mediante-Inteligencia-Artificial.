@@ -12,8 +12,10 @@ veredicto, alcance y decisiones provisionales recibidas.
 `modules/synthetic_events` posee payload, idempotencia, estados, comandos, casos
 de uso y puertos de persistencia. `modules/lead_qualification` posee el perfil
 comercial, oportunidades telecom, senales, politicas versionadas y el motor
-determinista de la Entrega 1. Ningun modulo de dominio importa FastAPI,
-SQLAlchemy, Pydantic Settings, Prometheus o SDKs de IA.
+determinista de la Entrega 1. `modules/telecom_extraction` posee la preparacion de
+contexto, salida estructurada, confianza, contradicciones y mapeo de la Entrega 2;
+su adaptador OpenAI queda detras de un puerto y es opt-in. Ningun dominio importa
+FastAPI, SQLAlchemy, Pydantic Settings, Prometheus o SDKs de IA.
 
 `infrastructure` implementa los puertos con PostgreSQL y contiene mecanismos
 tecnicos compartidos: engines, tablas, outbox, cola, leases e inbox.
@@ -97,7 +99,10 @@ La calificacion de leads es por ahora un modulo puro sin tablas ni endpoint. La
 politica se resuelve mediante un puerto por tenant y oportunidad; el motor
 verifica nuevamente ese alcance. Consulta
 [Telecommunications Lead Qualification](telecommunications-lead-qualification.md)
-y el [analisis de impacto](lead-qualification-impact-analysis.md).
+y el [analisis de impacto](lead-qualification-impact-analysis.md). La extraccion
+estructurada tampoco agrega tablas/endpoints; consulta
+[Telecommunications AI Structured Extraction](telecommunications-ai-structured-extraction.md)
+y su [analisis de impacto](delivery-2-impact-analysis.md).
 
 ## Transacciones
 
