@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     synthetic_adapter_enabled: bool = False
     synthetic_adapter_token: SecretStr | None = None
+    conversation_adapter_enabled: bool = False
+    conversation_adapter_token: SecretStr | None = None
 
     ai_extraction_enabled: bool = False
     ai_extraction_provider: Literal["openai"] = "openai"
@@ -52,6 +54,12 @@ class Settings(BaseSettings):
     queue_poll_interval_ms: int = Field(default=250, ge=50, le=60_000)
     queue_lease_seconds: int = Field(default=30, ge=5, le=600)
     queue_max_attempts: int = Field(default=3, ge=1, le=10)
+    conversation_processing_lease_seconds: int = Field(default=120, ge=10, le=900)
+    conversation_processing_max_attempts: int = Field(default=3, ge=1, le=10)
+    conversation_worker_batch_size: int = Field(default=10, ge=1, le=100)
+    conversation_outbox_batch_size: int = Field(default=50, ge=1, le=500)
+    conversation_outbox_lease_seconds: int = Field(default=30, ge=5, le=600)
+    conversation_outbox_max_attempts: int = Field(default=5, ge=1, le=20)
 
     @model_validator(mode="after")
     def validate_security_boundaries(self) -> Self:
@@ -68,6 +76,16 @@ class Settings(BaseSettings):
                 raise ValueError("SYNTHETIC_ADAPTER_TOKEN is required when the adapter is enabled")
             if len(self.synthetic_adapter_token.get_secret_value()) < 24:
                 raise ValueError("SYNTHETIC_ADAPTER_TOKEN must contain at least 24 characters")
+
+        if self.conversation_adapter_enabled:
+            if self.app_env == "production":
+                raise ValueError("the conversation adapter cannot be enabled in production")
+            if self.conversation_adapter_token is None:
+                raise ValueError(
+                    "CONVERSATION_ADAPTER_TOKEN is required when the adapter is enabled"
+                )
+            if len(self.conversation_adapter_token.get_secret_value()) < 24:
+                raise ValueError("CONVERSATION_ADAPTER_TOKEN must contain at least 24 characters")
 
         if self.ai_extraction_enabled and self.openai_api_key is None:
             raise ValueError("OPENAI_API_KEY is required when AI extraction is enabled")

@@ -34,6 +34,7 @@ def main() -> None:
         while not stopped.is_set():
             try:
                 container.worker.run_cycle()
+                container.conversation_worker.run_cycle()
             except Exception as error:
                 logger.exception(
                     "worker cycle failed",

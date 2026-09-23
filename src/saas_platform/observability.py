@@ -58,6 +58,74 @@ WORKER_MESSAGES = Counter(
     ("result",),
 )
 OUTBOX_PENDING = Gauge("saas_outbox_pending", "Pending outbox items observed by the worker")
+CONVERSATION_MESSAGES_INGESTED = Counter(
+    "saas_conversation_messages_ingested_total",
+    "Normalized conversation messages ingested by result",
+    ("result",),
+)
+CONVERSATION_MESSAGES_PROCESSED = Counter(
+    "saas_conversation_messages_processed_total",
+    "Conversation messages processed by outcome",
+    ("outcome",),
+)
+CONVERSATION_PROCESSING_DURATION = Histogram(
+    "saas_conversation_processing_duration_seconds",
+    "Conversation message processing duration",
+    ("outcome",),
+)
+TELECOM_EXTRACTION_APPLICATIONS = Counter(
+    "saas_telecom_extraction_applications_total",
+    "Durable extraction applications by result",
+    ("result",),
+)
+LEAD_PROFILE_CONFLICTS = Counter(
+    "saas_lead_profile_conflicts_total",
+    "Commercial profile conflicts persisted",
+)
+QUALIFICATION_EVALUATIONS = Counter(
+    "saas_qualification_evaluations_total",
+    "Deterministic qualification evaluations by classification",
+    ("classification",),
+)
+LEAD_CLASSIFICATION_CHANGES = Counter(
+    "saas_lead_classification_changes_total",
+    "Current lead classification changes",
+    ("previous", "current"),
+)
+DO_NOT_CONTACT_REGISTRATIONS = Counter(
+    "saas_do_not_contact_registrations_total",
+    "Durable do-not-contact registrations by result",
+    ("result",),
+)
+HANDOFF_REQUESTS = Counter(
+    "saas_handoff_requests_total",
+    "Durable handoff requests by result",
+    ("result",),
+)
+CONVERSATION_CONCURRENCY_CONFLICTS = Counter(
+    "saas_conversation_concurrency_conflicts_total",
+    "Conversation concurrency conflicts by operation",
+    ("operation",),
+)
+CONVERSATION_RETRIES = Counter(
+    "saas_conversation_retries_total",
+    "Conversation retries by operation",
+    ("operation",),
+)
+CONVERSATION_OUTBOX_EVENTS = Counter(
+    "saas_conversation_outbox_events_total",
+    "Conversation outbox publication attempts by result",
+    ("result",),
+)
+CONVERSATION_OUTBOX_PENDING = Gauge(
+    "saas_conversation_outbox_pending",
+    "Pending or retryable conversation outbox events",
+)
+CONVERSATION_ROLLBACKS = Counter(
+    "saas_conversation_rollbacks_total",
+    "Conversation unit-of-work rollbacks by operation",
+    ("operation",),
+)
 
 
 def redact(value: Any, key: str | None = None) -> Any:
@@ -106,11 +174,15 @@ class JsonFormatter(logging.Formatter):
             "user_id",
             "conversation_id",
             "message_id",
+            "message_processing_id",
+            "causation_id",
             "event_id",
             "operation",
             "error_type",
             "result",
             "execution_id",
+            "extraction_id",
+            "evaluation_id",
             "provider",
             "model",
             "prompt_version",
